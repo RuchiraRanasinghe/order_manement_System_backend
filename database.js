@@ -1,0 +1,60 @@
+const mysql = require('mysql2');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+// Create connection pool
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
+
+// Create connection promise wrapper
+const promisePool = pool.promise();
+
+// Test database connection
+const testConnection = async () => {
+  try {
+    const connection = await promisePool.getConnection();
+    console.log('✅ MySQL Database connected successfully');
+    connection.release();
+    return true;
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+    return false;
+  }
+};
+
+// Execute query helper
+const query = async (sql, values) => {
+  try {
+    const [rows] = await promisePool.query(sql, values);
+    return rows;
+  } catch (error) {
+    console.error('Database query error:', error.message);
+    throw error;
+  }
+};
+
+// Execute query with fields
+const queryWithFields = async (sql, values) => {
+  try {
+    const [rows, fields] = await promisePool.query(sql, values);
+    return { rows, fields };
+  } catch (error) {
+    console.error('Database query error:', error.message);
+    throw error;
+  }
+};
+
+module.exports = {
+  pool: promisePool,
+  query,
+  queryWithFields,
+  testConnection
+};
