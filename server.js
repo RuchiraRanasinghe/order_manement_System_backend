@@ -94,6 +94,9 @@ let products = [
   }
 ];
 
+// In-memory inquiries storage
+let inquiries = [];
+
 // Simple test routes
 app.get('/api/health', (req, res) => {
   res.json({
@@ -263,6 +266,69 @@ app.get('/api/courier/orders', (req, res) => {
   res.json({
     success: true,
     data: courierOrders
+  });
+});
+
+// Inquiry routes
+app.get('/api/inquiries', (req, res) => {
+  res.json({
+    success: true,
+    data: inquiries
+  });
+});
+
+app.post('/api/inquiries', (req, res) => {
+  const inquiry = {
+    id: (inquiries.length + 1).toString(),
+    ...req.body,
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+  
+  inquiries.push(inquiry);
+  
+  res.status(201).json({
+    success: true,
+    message: 'Inquiry submitted successfully',
+    data: inquiry
+  });
+});
+
+app.put('/api/inquiries/:id/status', (req, res) => {
+  const { status } = req.body;
+  const inquiryIndex = inquiries.findIndex(i => i.id === req.params.id);
+  
+  if (inquiryIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      message: 'Inquiry not found'
+    });
+  }
+  
+  inquiries[inquiryIndex].status = status;
+  
+  res.json({
+    success: true,
+    message: 'Inquiry status updated',
+    data: inquiries[inquiryIndex]
+  });
+});
+
+app.delete('/api/inquiries/:id', (req, res) => {
+  const inquiryIndex = inquiries.findIndex(i => i.id === req.params.id);
+  
+  if (inquiryIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      message: 'Inquiry not found'
+    });
+  }
+  
+  inquiries.splice(inquiryIndex, 1);
+  
+  res.json({
+    success: true,
+    message: 'Inquiry deleted successfully'
   });
 });
 
