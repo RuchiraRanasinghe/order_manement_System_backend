@@ -46,7 +46,6 @@ const authMiddleware = async (req, res, next) => {
       });
     }
     
-    console.error('Auth middleware error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

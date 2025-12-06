@@ -18,10 +18,7 @@ app.use(express.json());
 
 // Test database connection on startup
 const initializeDatabase = async () => {
-  const isConnected = await db.testConnection();
-  if (!isConnected) {
-    console.error('⚠️  WARNING: Database connection failed! Server will still run but with limited functionality.');
-  }
+  await db.testConnection();
 };
 
 // Health check
@@ -67,7 +64,7 @@ app.post('/api/auth/login', async (req, res) => {
         return;
       }
     } catch (dbError) {
-      console.log('Database login failed, using fallback');
+      // Silent fallback to default credentials
     }
     
     // Fallback authentication
@@ -89,7 +86,6 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Login error:', error);
     res.status(500).json({
       success: false,
       message: 'Login failed'
@@ -113,7 +109,6 @@ app.get('/api/dashboard/stats', async (req, res) => {
       database_status: 'connected'
     });
   } catch (error) {
-    console.error('Dashboard stats error:', error);
     res.json({
       success: true,
       total: 0,
@@ -155,7 +150,6 @@ app.get('/api/orders', async (req, res) => {
       database_status: 'connected'
     });
   } catch (error) {
-    console.error('Get orders error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch orders',
@@ -189,7 +183,6 @@ app.get('/api/orders/:id', async (req, res) => {
       database_status: 'connected'
     });
   } catch (error) {
-    console.error('Get order error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch order'
@@ -210,7 +203,6 @@ app.post('/api/orders', async (req, res) => {
       database_status: 'connected'
     });
   } catch (error) {
-    console.error('Create order error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create order'
@@ -248,7 +240,6 @@ app.put('/api/orders/:id/status', async (req, res) => {
       database_status: 'connected'
     });
   } catch (error) {
-    console.error('Update order status error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update order status'
@@ -274,7 +265,6 @@ app.put('/api/orders/:id', async (req, res) => {
       data: updatedOrder
     });
   } catch (error) {
-    console.error('Update order error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update order'
@@ -291,7 +281,6 @@ app.delete('/api/orders/:id', async (req, res) => {
       message: 'Order deleted successfully'
     });
   } catch (error) {
-    console.error('Delete order error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete order'
@@ -309,7 +298,6 @@ app.get('/api/products', async (req, res) => {
       database_status: 'connected'
     });
   } catch (error) {
-    console.error('Get products error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch products',
@@ -358,7 +346,6 @@ app.get('/api/analytics', async (req, res) => {
       database_status: 'connected'
     });
   } catch (error) {
-    console.error('Analytics error:', error);
     res.json({
       success: true,
       data: {
@@ -388,7 +375,6 @@ app.get('/api/courier/orders', async (req, res) => {
       database_status: 'connected'
     });
   } catch (error) {
-    console.error('Courier orders error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch courier orders',
@@ -440,7 +426,6 @@ app.get('/api/inquiries', async (req, res) => {
       data: inquiries
     });
   } catch (error) {
-    console.error('Get inquiries error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch inquiries'
@@ -457,7 +442,6 @@ app.post('/api/inquiries', async (req, res) => {
       data: inquiry
     });
   } catch (error) {
-    console.error('Create inquiry error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to submit inquiry'
@@ -475,7 +459,6 @@ app.put('/api/inquiries/:id/status', async (req, res) => {
       data: inquiry
     });
   } catch (error) {
-    console.error('Update inquiry error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update inquiry'
@@ -491,7 +474,6 @@ app.delete('/api/inquiries/:id', async (req, res) => {
       message: 'Inquiry deleted successfully'
     });
   } catch (error) {
-    console.error('Delete inquiry error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete inquiry'

@@ -21,7 +21,6 @@ const promisePool = pool.promise();
 const testConnection = async () => {
   try {
     const connection = await promisePool.getConnection();
-    console.log('✅ MySQL Database connected successfully');
     connection.release();
     return true;
   } catch (error) {
@@ -36,7 +35,6 @@ const query = async (sql, values) => {
     const [rows] = await promisePool.query(sql, values);
     return rows;
   } catch (error) {
-    console.error('Database query error:', error.message);
     throw error;
   }
 };
@@ -47,7 +45,6 @@ const queryWithFields = async (sql, values) => {
     const [rows, fields] = await promisePool.query(sql, values);
     return { rows, fields };
   } catch (error) {
-    console.error('Database query error:', error.message);
     throw error;
   }
 };
