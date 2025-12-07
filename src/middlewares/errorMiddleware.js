@@ -6,16 +6,25 @@ const errorMiddleware = (err, req, res, next) => {
   let message = err.message || 'Internal Server Error';
   let errors = null;
   
-  // MySQL duplicate entry error
+  // MySQL errors
   if (err.code === 'ER_DUP_ENTRY') {
-    statusCode = 400;
-    message = 'Duplicate entry found';
+    statusCode = 409;
+    message = 'Duplicate entry found. This record already exists.';
   }
   
-  // MySQL foreign key constraint error
   if (err.code === 'ER_NO_REFERENCED_ROW_2' || err.code === 'ER_ROW_IS_REFERENCED_2') {
     statusCode = 400;
     message = 'Cannot perform operation due to related records';
+  }
+  
+  if (err.code === 'ER_BAD_FIELD_ERROR') {
+    statusCode = 400;
+    message = 'Invalid field in query';
+  }
+  
+  if (err.code === 'ER_PARSE_ERROR') {
+    statusCode = 400;
+    message = 'Query syntax error';
   }
   
   // Validation error
@@ -28,15 +37,21 @@ const errorMiddleware = (err, req, res, next) => {
     }));
   }
   
-  // JWT error
+  // JWT errors
   if (err.name === 'JsonWebTokenError') {
     statusCode = 401;
-    message = 'Invalid token';
+    message = 'Invalid authentication token';
   }
   
   if (err.name === 'TokenExpiredError') {
     statusCode = 401;
-    message = 'Token expired';
+    message = 'Authentication token has expired';
+  }
+  
+  // Cast errors
+  if (err.name === 'CastError') {
+    statusCode = 400;
+    message = 'Invalid ID format';
   }
   
   // Send error response
@@ -44,7 +59,7 @@ const errorMiddleware = (err, req, res, next) => {
     success: false,
     message,
     errors,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 };
 

@@ -1,15 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const compression = require('compression');
+const helmet = require('helmet');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 
-// Middleware
+// Security and performance middleware
+app.use(helmet());
+app.use(compression());
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // In-memory data storage (replace with database later)
 let orders = [
@@ -193,6 +198,29 @@ app.post('/api/orders', (req, res) => {
     });
   }
   
+  // Validate data types and formats
+  if (typeof fullName !== 'string' || fullName.trim().length < 2) {
+    return res.status(400).json({
+      success: false,
+      message: 'Valid full name is required (minimum 2 characters)'
+    });
+  }
+
+  if (typeof mobile !== 'string' || !/^[0-9]{10,15}$/.test(mobile.replace(/[\s\-\+]/g, ''))) {
+    return res.status(400).json({
+      success: false,
+      message: 'Valid mobile number is required (10-15 digits)'
+    });
+  }
+
+  const qty = parseInt(quantity);
+  if (isNaN(qty) || qty < 1 || qty > 100) {
+    return res.status(400).json({
+      success: false,
+      message: 'Valid quantity is required (1-100)'
+    });
+  }
+  
   // Generate order ID
   const orderNumber = String(orders.length + 1).padStart(3, '0');
   const order_id = `ORD2024${orderNumber}`;
@@ -207,16 +235,15 @@ app.post('/api/orders', (req, res) => {
   };
   
   const productDetails = productMap[product] || productMap['herbal-cream'];
-  const qty = parseInt(quantity);
   const total_amount = productDetails.price * qty;
   
   // Create new order
   const newOrder = {
     id: String(orders.length + 1),
     order_id: order_id,
-    fullName: fullName,
-    address: address,
-    mobile: mobile,
+    fullName: fullName.trim(),
+    address: address.trim(),
+    mobile: mobile.replace(/[\s\-]/g, ''),
     product: product,
     product_id: productDetails.product_id,
     product_name: productDetails.product_name,
@@ -240,7 +267,16 @@ app.post('/api/orders', (req, res) => {
 // Update order status
 app.put('/api/orders/:id/status', (req, res) => {
   const { status } = req.body;
-  const orderIndex = orders.findIndex(o => o.id === req.params.id);
+  const orderId = parseInt(req.params.id);
+  
+  if (isNaN(orderId) || orderId < 1) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid order ID'
+    });
+  }
+
+  const orderIndex = orders.findIndex(o => o.id === String(orderId));
   
   if (orderIndex === -1) {
     return res.status(404).json({
@@ -251,10 +287,10 @@ app.put('/api/orders/:id/status', (req, res) => {
   
   // Validate status
   const validStatuses = ['pending', 'received', 'issued', 'sent-to-courier', 'in-transit', 'delivered', 'cancelled'];
-  if (!validStatuses.includes(status)) {
+  if (!status || !validStatuses.includes(status)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid status'
+      message: 'Invalid status. Valid statuses: ' + validStatuses.join(', ')
     });
   }
   

@@ -1,6 +1,33 @@
 const db = require('../../database');
 
 class Order {
+  // Validate order data
+  static validateOrderData(data) {
+    const errors = [];
+    
+    if (!data.fullName || data.fullName.trim().length < 2) {
+      errors.push('Full name is required (minimum 2 characters)');
+    }
+    
+    if (!data.address || data.address.trim().length < 5) {
+      errors.push('Valid address is required');
+    }
+    
+    if (!data.mobile || !/^[0-9]{10,15}$/.test(data.mobile.replace(/[\s\-\+]/g, ''))) {
+      errors.push('Valid mobile number is required');
+    }
+    
+    if (!data.product_id) {
+      errors.push('Product ID is required');
+    }
+    
+    if (!data.quantity || parseInt(data.quantity) < 1) {
+      errors.push('Valid quantity is required');
+    }
+    
+    return errors;
+  }
+
   // Generate order ID
   static generateOrderId() {
     const date = new Date();
@@ -11,8 +38,14 @@ class Order {
     return `ORD${year}${month}${day}${random}`;
   }
 
-  // Create order
+  // Create order with validation
   static async create(orderData) {
+    // Validate input
+    const errors = this.validateOrderData(orderData);
+    if (errors.length > 0) {
+      throw new Error(errors.join(', '));
+    }
+
     const orderId = this.generateOrderId();
     const { 
       fullName, 
@@ -26,6 +59,19 @@ class Order {
       total_amount 
     } = orderData;
 
+    const sanitizedData = {
+      orderId,
+      fullName: fullName.trim(),
+      address: address.trim(),
+      mobile: mobile.replace(/[\s\-]/g, ''),
+      product_id,
+      product_name: product_name || '',
+      quantity: parseInt(quantity),
+      status,
+      notes: notes.trim(),
+      total_amount: total_amount || parseInt(quantity) * 10000
+    };
+
     const sql = `
       INSERT INTO orders 
       (order_id, fullName, address, mobile, product_id, product_name, quantity, status, notes, total_amount)
@@ -33,8 +79,16 @@ class Order {
     `;
     
     const result = await db.query(sql, [
-      orderId, fullName, address, mobile, product_id, product_name, 
-      quantity, status, notes, total_amount || quantity * 10000
+      sanitizedData.orderId,
+      sanitizedData.fullName,
+      sanitizedData.address,
+      sanitizedData.mobile,
+      sanitizedData.product_id,
+      sanitizedData.product_name,
+      sanitizedData.quantity,
+      sanitizedData.status,
+      sanitizedData.notes,
+      sanitizedData.total_amount
     ]);
     
     return this.findById(result.insertId);
@@ -54,32 +108,37 @@ class Order {
     return orders[0] || null;
   }
 
-  // Get all orders
+  // Get all orders with optimized query
   static async getAll(filters = {}) {
-    let sql = 'SELECT * FROM orders WHERE 1=1';
+    let sql = 'SELECT * FROM orders';
     const params = [];
+    const conditions = [];
     
     if (filters.status) {
-      sql += ' AND status = ?';
+      conditions.push('status = ?');
       params.push(filters.status);
     }
     
     if (filters.search) {
-      sql += ' AND (fullName LIKE ? OR mobile LIKE ? OR order_id LIKE ?)';
+      conditions.push('(fullName LIKE ? OR mobile LIKE ? OR order_id LIKE ?)');
       const searchTerm = `%${filters.search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
     
     if (filters.startDate && filters.endDate) {
-      sql += ' AND DATE(createdAt) BETWEEN ? AND ?';
+      conditions.push('DATE(createdAt) BETWEEN ? AND ?');
       params.push(filters.startDate, filters.endDate);
+    }
+    
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
     }
     
     sql += ' ORDER BY createdAt DESC';
     
     if (filters.limit) {
       sql += ' LIMIT ?';
-      params.push(filters.limit);
+      params.push(parseInt(filters.limit));
     }
     
     return await db.query(sql, params);

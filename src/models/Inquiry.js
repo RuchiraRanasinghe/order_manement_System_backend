@@ -22,21 +22,26 @@ class Inquiry {
     return inquiries[0] || null;
   }
 
-  // Get all inquiries
+  // Get all inquiries with optimization
   static async getAll(filters = {}) {
-    let sql = 'SELECT * FROM inquiries WHERE 1=1';
+    let sql = 'SELECT * FROM inquiries';
     const params = [];
+    const conditions = [];
     
     if (filters.status) {
-      sql += ' AND status = ?';
+      conditions.push('status = ?');
       params.push(filters.status);
+    }
+    
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
     }
     
     sql += ' ORDER BY createdAt DESC';
     
     if (filters.limit) {
       sql += ' LIMIT ?';
-      params.push(filters.limit);
+      params.push(parseInt(filters.limit));
     }
     
     return await db.query(sql, params);

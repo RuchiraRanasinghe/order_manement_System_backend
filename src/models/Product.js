@@ -46,10 +46,11 @@ class Product {
     return products[0] || null;
   }
 
-  // Get all products
+  // Get all products with optimized query
   static async getAll(filters = {}) {
-    let sql = 'SELECT * FROM products WHERE 1=1';
+    let sql = 'SELECT * FROM products';
     const params = [];
+    const conditions = [];
     
     if (filters.status) {
       sql += ' AND status = ?';

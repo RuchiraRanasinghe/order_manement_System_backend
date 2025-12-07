@@ -1,10 +1,17 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
+// Simple in-memory cache for user lookups (reduces DB queries)
+const userCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from header
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Get token from header with multiple format support
+    const authHeader = req.header('Authorization');
+    const token = authHeader?.startsWith('Bearer ') 
+      ? authHeader.slice(7) 
+      : authHeader;
     
     if (!token) {
       return res.status(401).json({
@@ -16,8 +23,25 @@ const authMiddleware = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Find user
-    const user = await User.findById(decoded.id);
+    // Check cache first
+    const cacheKey = `user_${decoded.id}`;
+    const cachedUser = userCache.get(cacheKey);
+    
+    let user;
+    if (cachedUser && Date.now() - cachedUser.timestamp < CACHE_TTL) {
+      user = cachedUser.data;
+    } else {
+      // Find user from database
+      user = await User.findById(decoded.id);
+      
+      if (user) {
+        // Cache user data
+        userCache.set(cacheKey, {
+          data: user,
+          timestamp: Date.now()
+        });
+      }
+    }
     
     if (!user) {
       return res.status(401).json({

@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const compression = require('compression');
+const helmet = require('helmet');
+const morgan = require('morgan');
 const db = require('./database');
 const Order = require('./src/models/Order');
 const Product = require('./src/models/Product');
@@ -12,39 +15,120 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
+// Security and performance middleware
+app.use(helmet());
+app.use(compression());
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging (only in development)
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
+
+// Simple rate limiting middleware
+const requestCounts = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_REQUESTS = 100; // requests per window
+
+const rateLimiter = (req, res, next) => {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  
+  if (!requestCounts.has(ip)) {
+    requestCounts.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return next();
+  }
+  
+  const record = requestCounts.get(ip);
+  
+  if (now > record.resetTime) {
+    record.count = 1;
+    record.resetTime = now + RATE_LIMIT_WINDOW;
+    return next();
+  }
+  
+  if (record.count >= MAX_REQUESTS) {
+    return res.status(429).json({
+      success: false,
+      message: 'Too many requests, please try again later'
+    });
+  }
+  
+  record.count++;
+  next();
+};
+
+// Apply rate limiting to API routes
+app.use('/api', rateLimiter);
+
+// Clean up rate limit records periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of requestCounts.entries()) {
+    if (now > record.resetTime) {
+      requestCounts.delete(ip);
+    }
+  }
+}, RATE_LIMIT_WINDOW);
 
 // Test database connection on startup
 const initializeDatabase = async () => {
   await db.testConnection();
 };
 
-// Health check
+// Health check with caching
+let healthCheckCache = { status: null, timestamp: 0 };
+const HEALTH_CACHE_TTL = 30000; // 30 seconds
+
 app.get('/api/health', async (req, res) => {
   try {
+    // Use cached result if fresh
+    if (Date.now() - healthCheckCache.timestamp < HEALTH_CACHE_TTL && healthCheckCache.status) {
+      return res.json(healthCheckCache.status);
+    }
+
     await db.query('SELECT 1');
-    res.json({
+    const response = {
       success: true,
       message: 'Server is running',
       database: 'Connected',
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    healthCheckCache = { status: response, timestamp: Date.now() };
+    res.json(response);
   } catch (error) {
-    res.json({
+    const response = {
       success: true,
       message: 'Server is running',
       database: 'Disconnected',
       timestamp: new Date().toISOString()
-    });
+    };
+    res.json(response);
   }
 });
 
-// Auth routes
+// Auth routes with validation
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid input format'
+      });
+    }
     
     // Try database first
     try {
@@ -93,11 +177,13 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Dashboard routes
+// Dashboard routes with optimized response
 app.get('/api/dashboard/stats', async (req, res) => {
   try {
     const stats = await Order.getDashboardStats();
-    res.json({
+    
+    // Format and ensure all values are numbers
+    const formattedStats = {
       success: true,
       total: parseInt(stats.total) || 0,
       pending: parseInt(stats.pending) || 0,
@@ -107,7 +193,9 @@ app.get('/api/dashboard/stats', async (req, res) => {
       today: parseInt(stats.today) || 0,
       monthly: parseInt(stats.monthly) || 0,
       database_status: 'connected'
-    });
+    };
+    
+    res.json(formattedStats);
   } catch (error) {
     res.json({
       success: true,
@@ -123,20 +211,21 @@ app.get('/api/dashboard/stats', async (req, res) => {
   }
 });
 
-// Orders routes
+// Orders routes with validation and optimization
 app.get('/api/orders', async (req, res) => {
   try {
-    const { status, search, startDate, endDate } = req.query;
+    const { status, search, startDate, endDate, limit } = req.query;
     const filters = {};
     
-    if (status) filters.status = status;
-    if (search) filters.search = search;
+    if (status && status !== 'all') filters.status = status;
+    if (search) filters.search = search.trim();
     if (startDate) filters.startDate = startDate;
     if (endDate) filters.endDate = endDate;
+    if (limit) filters.limit = Math.min(parseInt(limit) || 100, 1000); // Max 1000
     
     const orders = await Order.getAll(filters);
     
-    // Format orders to match frontend expectations
+    // Format orders efficiently
     const formattedOrders = orders.map(order => ({
       ...order,
       product: order.product_name || 'Herbal Cream',
@@ -158,10 +247,19 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
-// Get single order by ID
+// Get single order by ID with validation
 app.get('/api/orders/:id', async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const orderId = parseInt(req.params.id);
+    
+    if (isNaN(orderId) || orderId < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid order ID'
+      });
+    }
+
+    const order = await Order.findById(orderId);
     
     if (!order) {
       return res.status(404).json({
@@ -170,7 +268,7 @@ app.get('/api/orders/:id', async (req, res) => {
       });
     }
     
-    // Format to match frontend expectations
+    // Format response
     const formattedOrder = {
       ...order,
       product: order.product_name || 'Herbal Cream',
@@ -190,10 +288,19 @@ app.get('/api/orders/:id', async (req, res) => {
   }
 });
 
-// Create new order
+// Create new order with validation
 app.post('/api/orders', async (req, res) => {
   try {
     const orderData = req.body;
+    
+    // Basic validation
+    if (!orderData.fullName || !orderData.address || !orderData.mobile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
+      });
+    }
+
     const newOrder = await Order.create(orderData);
     
     res.status(201).json({
@@ -205,26 +312,34 @@ app.post('/api/orders', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to create order'
+      message: error.message || 'Failed to create order'
     });
   }
 });
 
-// Update order status
+// Update order status with validation
 app.put('/api/orders/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
+    const orderId = parseInt(req.params.id);
     
-    // Validate status
-    const validStatuses = ['pending', 'received', 'issued', 'sent-to-courier', 'in-transit', 'delivered', 'cancelled'];
-    if (!validStatuses.includes(status)) {
+    if (isNaN(orderId) || orderId < 1) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid status'
+        message: 'Invalid order ID'
       });
     }
     
-    const updatedOrder = await Order.updateStatus(req.params.id, status);
+    // Validate status
+    const validStatuses = ['pending', 'received', 'issued', 'sent-to-courier', 'in-transit', 'delivered', 'cancelled'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Valid statuses: ' + validStatuses.join(', ')
+      });
+    }
+    
+    const updatedOrder = await Order.updateStatus(orderId, status);
     
     if (!updatedOrder) {
       return res.status(404).json({
@@ -502,8 +617,8 @@ app.use((err, req, res, next) => {
 // Start server
 const PORT = process.env.PORT || 3030;
 
-initializeDatabase().then(() => {
-  app.listen(PORT, () => {
+const server = initializeDatabase().then(() => {
+  const httpServer = app.listen(PORT, () => {
     console.log('\n' + '='.repeat(60));
     console.log('✅ Server running on port', PORT);
     console.log('='.repeat(60));
@@ -514,4 +629,25 @@ initializeDatabase().then(() => {
     console.log('   Password: admin123');
     console.log('='.repeat(60) + '\n');
   });
+
+  // Graceful shutdown
+  const gracefulShutdown = (signal) => {
+    console.log(`\n${signal} received. Starting graceful shutdown...`);
+    
+    httpServer.close(() => {
+      console.log('✅ Server closed successfully');
+      process.exit(0);
+    });
+
+    // Force shutdown after 10 seconds
+    setTimeout(() => {
+      console.error('⚠️  Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+  return httpServer;
 });

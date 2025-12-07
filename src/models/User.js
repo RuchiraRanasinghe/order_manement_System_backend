@@ -1,5 +1,6 @@
 const db = require('../../database');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 class User {
   // Create user
@@ -16,6 +17,13 @@ class User {
     
     const result = await db.query(sql, [fullName, email, hashedPassword, role]);
     return result.insertId;
+  }
+
+  // Find user by email
+  static async findByEmail(email) {
+    const sql = 'SELECT * FROM users WHERE email = ? LIMIT 1';
+    const users = await db.query(sql, [email]);
+    return users[0] || null;
   }
 
   // Find user by email or fullName
@@ -101,6 +109,19 @@ class User {
     
     const users = await db.query(sql, params);
     return users.length > 0;
+  }
+
+  // Generate JWT token
+  static generateToken(user) {
+    return jwt.sign(
+      { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
   }
 }
 
