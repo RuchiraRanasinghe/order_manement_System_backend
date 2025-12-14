@@ -435,12 +435,43 @@ app.get('/api/analytics', async (req, res) => {
 // Courier routes with MySQL
 app.get('/api/courier/orders', async (req, res) => {
   try {
+    const { page, limit } = req.query;
+
+    // If limit is provided, return paginated results
+    if (limit) {
+      const pageNum = parseInt(page, 10) || 1;
+      const limitNum = parseInt(limit, 10) || 10;
+      const offset = (pageNum - 1) * limitNum;
+
+      // total count
+      const countRows = await db.query(
+        `SELECT COUNT(*) as total FROM orders WHERE status IN ('sended', 'in-transit', 'delivered')`
+      );
+      const total = countRows && countRows[0] ? countRows[0].total : 0;
+
+      const orders = await db.query(
+        `SELECT * FROM orders WHERE status IN ('sended', 'in-transit', 'delivered') ORDER BY updatedAt DESC LIMIT ? OFFSET ?`,
+        [limitNum, offset]
+      );
+
+      return res.json({
+        success: true,
+        data: {
+          orders,
+          total,
+          page: pageNum,
+          limit: limitNum
+        }
+      });
+    }
+
+    // Fallback: return all courier orders when no limit specified
     const orders = await db.query(`
       SELECT * FROM orders 
       WHERE status IN ('sended', 'in-transit', 'delivered')
       ORDER BY updatedAt DESC
     `);
-    
+
     res.json({
       success: true,
       data: orders
