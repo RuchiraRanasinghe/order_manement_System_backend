@@ -19,13 +19,35 @@ class OrdersController {
         filters.startDate = req.query.startDate;
         filters.endDate = req.query.endDate;
       }
+
+      // Pagination
+      if (req.query.page) {
+        filters.page = req.query.page;
+      }
+      if (req.query.limit) {
+        filters.limit = req.query.limit;
+      }
       
-      const orders = await Order.getAll(filters);
-      
+      const result = await Order.getAll(filters);
+
+      // If paginated result returned
+      if (result && result.orders !== undefined) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            orders: result.orders,
+            total: result.total,
+            page: result.page,
+            limit: result.limit
+          }
+        });
+      }
+
+      // Fallback (non-paginated)
       res.status(200).json({
         success: true,
-        count: orders.length,
-        data: orders
+        count: result.length,
+        data: result
       });
       
     } catch (error) {

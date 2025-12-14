@@ -122,20 +122,31 @@ const createDatabase = async () => {
 
     // Insert sample orders
     console.log('Inserting sample orders...');
-    const orders = [
-      {
-        order_id: 'ORD20251213001',
-        fullName: 'Kamal Perera',
-        address: '123 Main Street, Colombo',
-        mobile: '94701234567',
-        product_id: 'PROD001',
-        product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)',
-        quantity: 2,
-        status: 'received',
-        total_amount: 20000.00
-      },
-     
-    ];
+  const orders = [
+  { order_id: 'ORD20251213001', fullName: 'Kamal Perera', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213002', fullName: 'Nimal Fernando', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213003', fullName: 'Saman Jayasinghe', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213004', fullName: 'Chathura Silva', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213005', fullName: 'Ruwan Kumara', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213006', fullName: 'Sanduni Wickramasinghe', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213007', fullName: 'Tharindu Abeysekara', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213008', fullName: 'Dilani Peris', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213009', fullName: 'Ishara Madushan', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213010', fullName: 'Hansika de Alwis', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+
+  { order_id: 'ORD20251213011', fullName: 'Pradeep Ranasinghe', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213012', fullName: 'Kasun Pathirana', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213013', fullName: 'Dinesh Gunawardena', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213014', fullName: 'Lakshan Wijesuriya', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213015', fullName: 'Shehani Fernando', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213016', fullName: 'Chamod Dilshan', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213017', fullName: 'Nisala Perera', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213018', fullName: 'Umesh Karunaratne', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213019', fullName: 'Sachini Weerasinghe', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 },
+  { order_id: 'ORD20251213020', fullName: 'Janith Senanayake', address: '123 Main Street, Colombo', mobile: '94701234567', product_id: 'PROD001', product_name: 'NIRVAAN 5KG (100% PURE COCONUT OIL)', quantity: 2, status: 'received', total_amount: 20000.00 }
+]
+
+
 
     for (const order of orders) {
       await connection.query(`

@@ -126,7 +126,7 @@ class Order {
 
   // Get all orders with optimized query
   static async getAll(filters = {}) {
-    let sql = 'SELECT * FROM orders';
+    let baseSql = 'FROM orders';
     const params = [];
     const conditions = [];
     
@@ -146,17 +146,37 @@ class Order {
       params.push(filters.startDate, filters.endDate);
     }
     
+    let whereClause = '';
     if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
+      whereClause = ' WHERE ' + conditions.join(' AND ');
     }
-    
-    sql += ' ORDER BY createdAt DESC';
-    
+
+    // If pagination requested (page or limit), return paginated data with total count
+    if (filters.page || filters.limit) {
+      const limit = parseInt(filters.limit, 10) || 10;
+      const page = parseInt(filters.page, 10) || 1;
+      const offset = (page - 1) * limit;
+
+      // Count total matching rows
+      const countSql = `SELECT COUNT(*) as total ${baseSql}${whereClause}`;
+      const countResult = await db.query(countSql, params);
+      const total = countResult && countResult[0] ? countResult[0].total : 0;
+
+      // Fetch paginated rows
+      const dataSql = `SELECT * ${baseSql}${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`;
+      const dataParams = params.slice();
+      dataParams.push(limit, offset);
+      const rows = await db.query(dataSql, dataParams);
+
+      return { orders: rows, total, page, limit };
+    }
+
+    // Non-paginated fallback
+    let sql = `SELECT * ${baseSql}${whereClause} ORDER BY createdAt DESC`;
     if (filters.limit) {
       sql += ' LIMIT ?';
-      params.push(parseInt(filters.limit));
+      params.push(parseInt(filters.limit, 10));
     }
-    
     return await db.query(sql, params);
   }
 

@@ -129,10 +129,62 @@ app.get('/api/dashboard/stats', async (req, res) => {
 // Orders routes with MySQL
 app.get('/api/orders', async (req, res) => {
   try {
-    const orders = await db.query('SELECT * FROM orders ORDER BY createdAt DESC');
+    const { status, search, startDate, endDate, page, limit } = req.query;
+
+    const conditions = [];
+    const params = [];
+
+    if (status && status !== 'all') {
+      conditions.push('status = ?');
+      params.push(status);
+    }
+
+    if (search) {
+      conditions.push('(fullName LIKE ? OR mobile LIKE ? OR order_id LIKE ?)');
+      const term = `%${search}%`;
+      params.push(term, term, term);
+    }
+
+    if (startDate && endDate) {
+      conditions.push('DATE(createdAt) BETWEEN ? AND ?');
+      params.push(startDate, endDate);
+    }
+
+    const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
+
+    // Pagination
+    const parsedLimit = parseInt(limit, 10) || 0;
+    const parsedPage = parseInt(page, 10) || 1;
+
+    if (parsedLimit > 0) {
+      // count total
+      const countSql = `SELECT COUNT(*) as total FROM orders${whereClause}`;
+      const countResult = await db.query(countSql, params);
+      const total = countResult && countResult[0] ? countResult[0].total : 0;
+
+      const offset = (parsedPage - 1) * parsedLimit;
+      const dataSql = `SELECT * FROM orders${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`;
+      const dataParams = params.slice();
+      dataParams.push(parsedLimit, offset);
+      const rows = await db.query(dataSql, dataParams);
+
+      return res.json({
+        success: true,
+        data: {
+          orders: rows,
+          total,
+          page: parsedPage,
+          limit: parsedLimit
+        }
+      });
+    }
+
+    // no pagination requested - return all
+    const allSql = `SELECT * FROM orders${whereClause} ORDER BY createdAt DESC`;
+    const allRows = await db.query(allSql, params);
     res.json({
       success: true,
-      data: orders
+      data: allRows
     });
   } catch (error) {
     console.error('Get orders error:', error);
