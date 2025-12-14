@@ -28,14 +28,30 @@ class Order {
     return errors;
   }
 
-  // Generate order ID
-  static generateOrderId() {
+  // Generate order ID in format ORDYYYYMMDDNNN where NNN is a daily incremental counter
+  static async generateOrderId() {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `ORD${year}${month}${day}${random}`;
+    const prefix = `ORD${year}${month}${day}`;
+
+    // Find the last order_id for today and increment its numeric suffix
+    const sql = `SELECT order_id FROM orders WHERE order_id LIKE ? ORDER BY order_id DESC LIMIT 1`;
+    const rows = await db.query(sql, [prefix + '%']);
+
+    let nextNumber = 1;
+    if (rows && rows.length > 0 && rows[0].order_id) {
+      const lastId = rows[0].order_id;
+      const suffix = lastId.slice(prefix.length);
+      const parsed = parseInt(suffix, 10);
+      if (!Number.isNaN(parsed)) {
+        nextNumber = parsed + 1;
+      }
+    }
+
+    const counter = String(nextNumber).padStart(3, '0');
+    return `${prefix}${counter}`;
   }
 
   // Create order with validation
@@ -46,7 +62,7 @@ class Order {
       throw new Error(errors.join(', '));
     }
 
-    const orderId = this.generateOrderId();
+  const orderId = await this.generateOrderId();
     const { 
       fullName, 
       address, 
