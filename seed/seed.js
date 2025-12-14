@@ -38,7 +38,7 @@ const createDatabase = async () => {
         fullName VARCHAR(100) NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
-        role ENUM('admin', 'staff') DEFAULT 'admin',
+        role ENUM('admin', 'courier') DEFAULT 'admin',
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
@@ -89,6 +89,14 @@ const createDatabase = async () => {
       INSERT INTO users (fullName, email, password, role) 
       VALUES (?, ?, ?, ?)
     `, ['Admin User', 'admin@nirvaan.lk', hashedPassword, 'admin']);
+
+    // Insert courier user
+    console.log('Inserting courier user...');
+    const courierPassword = await bcrypt.hash('courier123', 10);
+    await connection.query(`
+      INSERT INTO users (fullName, email, password, role)
+      VALUES (?, ?, ?, ?)
+    `, ['Courier User', 'courier@nirvaan.lk', courierPassword, 'courier']);
 
     // Insert sample products
     console.log('Inserting sample products...');

@@ -6,7 +6,11 @@ class AuthController {
   // User login
   async login(req, res, next) {
     try {
-      const { email, fullName, password } = req.body;
+      let { email, fullName, password } = req.body;
+      // Trim inputs for safety
+      if (email) email = email.trim();
+      if (fullName) fullName = fullName.trim();
+      if (password) password = password.trim();
       
       // Validate input
       if (!password) {
