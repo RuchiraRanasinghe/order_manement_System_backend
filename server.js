@@ -48,9 +48,23 @@ app.get('/api/health', async (req, res) => {
 
 // Auth routes
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+  const bcrypt = require('bcryptjs');
+  const jwt = require('jsonwebtoken');
+  let { email, password } = req.body;
   
   try {
+    // Trim inputs
+    if (email) email = email.trim();
+    if (password) password = password.trim();
+    
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+    
     // Check in database
     const users = await db.query('SELECT * FROM users WHERE email = ?', [email]);
     
@@ -63,18 +77,32 @@ app.post('/api/auth/login', async (req, res) => {
     
     const user = users[0];
     
-    // For simplicity, using direct password comparison
-    // In production, use bcrypt.compare()
-    if (password !== 'admin123') { // Replace with bcrypt comparison
+    // Compare password using bcrypt
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
     
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+    
     res.json({
       success: true,
-      token: 'test-jwt-token',
+      message: 'Login successful',
+      token,
       user: {
         id: user.id,
         fullName: user.fullName,
